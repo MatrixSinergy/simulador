@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Sensor de Proximidad Sonoro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .bg-grid {
+            background-size: 30px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500 selection:text-black">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
+                <i class="fa-solid fa-volume-high text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold text-white tracking-wide leading-tight">Sensor de Proximidad Sonoro <span class="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono font-normal">Audio Synthesizer</span></h1>
+                <p class="text-xs text-slate-400">Emisión Acústica Dinámica & Respuesta Frecuencia vs Distancia</p>
+            </div>
+        </div>
+        
+        <!-- Controls & Sound Toggle Header -->
+        <div class="flex items-center space-x-3">
+            <!-- Audio Toggle Button -->
+            <button id="btnAudioToggle" class="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs flex items-center space-x-2 transition shadow-md shadow-rose-950/40">
+                <i class="fa-solid fa-volume-xmark" id="audioIcon"></i>
+                <span id="audioText">Activar Sonido</span>
+            </button>
+            <button id="btnPlayPause" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center space-x-2 transition shadow-md shadow-emerald-900/30">
+                <i class="fa-solid fa-play" id="playIcon"></i>
+                <span id="playText">Acercamiento Auto</span>
+            </button>
+            <button id="btnReset" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs flex items-center space-x-1.5 border border-slate-700 transition">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>Reiniciar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 overflow-hidden p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-[1920px] mx-auto w-full">
+        
+        <!-- Left Column: Controls & Metrics (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-5 overflow-y-auto pr-1">
+            
+            <!-- Real-time Metrics Panel -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Metric 1: Distance -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 relative overflow-hidden group hover:border-slate-700 transition">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">
+                        <span>Distancia (d)</span>
+                        <i class="fa-solid fa-ruler-horizontal text-cyan-400"></i>
+                    </div>
+                    <div class="flex items-baseline space-x-1">
+                        <span id="valDistanceDisplay" class="text-3xl font-bold font-mono text-cyan-400">20.0</span>
+                        <span class="text-slate-400 text-sm font-semibold">cm</span>
+                    </div>
+                    <div class="mt-2 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div id="distanceBar" class="bg-cyan-500 h-full rounded-full transition-all duration-75" style="width: 20%"></div>
+                    </div>
+                </div>
+
+                <!-- Metric 2: Sound Frequency -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 relative overflow-hidden group hover:border-slate-700 transition">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">
+                        <span>Frecuencia Audio</span>
+                        <i class="fa-solid fa-wave-square text-emerald-400"></i>
+                    </div>
+                    <div class="flex items-baseline space-x-1">
+                        <span id="valFrequencyDisplay" class="text-3xl font-bold font-mono text-emerald-400">650</span>
+                        <span class="text-slate-400 text-sm font-semibold">Hz</span>
+                    </div>
+                    <div class="mt-2 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div id="freqBar" class="bg-emerald-500 h-full rounded-full transition-all duration-75" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parameters & Sound Controls Card -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5 space-y-5 flex-1 flex flex-col">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <h2 class="font-bold text-sm text-slate-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i>
+                        <span>Ajustes del Sensor y Audio</span>
+                    </h2>
+                    <span id="soundStatusBadge" class="text-[11px] px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800 font-mono">Audio Silenciado</span>
+                </div>
+
+                <!-- Main Slider: Distance -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="inputDistance" class="font-medium text-slate-300 flex items-center space-x-2">
+                            <span>Posición del Objeto</span>
+                        </label>
+                        <span class="text-xs font-mono bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700" id="sliderDistLabel">20.0 cm</span>
+                    </div>
+                    <input type="range" id="inputDistance" min="1" max="100" step="0.5" value="20" 
+                        class="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50">
+                    <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                        <span>1 cm (Alerta Alarma)</span>
+                        <span>50 cm</span>
+                        <span>100 cm (Sin Riesgo)</span>
+                    </div>
+                </div>
+
+                <!-- Sound Alert Mode Selector -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Modo de Alerta Sonora</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="sound-mode-btn active bg-cyan-950 border-cyan-500 text-cyan-300 border text-xs font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-2 transition" data-mode="beeps">
+                            <i class="fa-solid fa-bullhorn text-sm"></i>
+                            <span>Beeps Pulsantes (Reversa)</span>
+                        </button>
+                        <button class="sound-mode-btn bg-slate-800/80 border-slate-700 text-slate-400 hover:border-slate-600 border text-xs font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-2 transition" data-mode="continuous">
+                            <i class="fa-solid fa-signal text-sm"></i>
+                            <span>Tono Continuo (VCO)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Audio Fine-Tuning Controls -->
+                <div class="space-y-4 pt-2">
+                    <!-- Base Frequency Adjustment -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Frecuencia Base Tonos</span>
+                            <span id="lblBaseFreq" class="font-mono text-slate-300">440 Hz</span>
+                        </div>
+                        <input type="range" id="inputBaseFreq" min="200" max="1200" step="20" value="440" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-slate-400">
+                    </div>
+
+                    <!-- Volume Master Control -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Volumen General</span>
+                            <span id="lblVolume" class="font-mono text-slate-300">70 %</span>
+                        </div>
+                        <input type="range" id="inputVolume" min="0" max="100" step="5" value="70" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-slate-400">
+                    </div>
+                </div>
+
+                <!-- Behavior Info Box -->
+                <div class="mt-auto pt-3 border-t border-slate-800/80 bg-slate-950/40 p-3 rounded-lg border">
+                    <span class="text-[11px] font-semibold text-slate-400 block mb-1 uppercase tracking-wider">Comportamiento del Audio:</span>
+                    <p id="soundDesc" class="text-[11px] text-slate-300">En modo <b>Beeps</b>, el intervalo entre sonidos disminuye a medida que el objeto se aproxima. Por debajo de 5 cm se convierte en tono continuo constante de advertencia.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Visualizer & Real-Time Graph (8 cols) -->
+        <div class="lg:col-span-8 flex flex-col gap-5 overflow-hidden">
+            
+            <!-- Top Right: 2D Interactive Canvas Visualizer -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col relative overflow-hidden bg-grid shadow-inner h-[260px] shrink-0">
+                <div class="flex items-center justify-between mb-2 z-10">
+                    <div class="flex items-center space-x-2">
+                        <span id="statusLed" class="flex h-2.5 w-2.5 rounded-full bg-slate-600"></span>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Simulación Física y Pulso Sonoro</h3>
+                    </div>
+                    <div class="text-[11px] font-mono text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded border border-slate-700">
+                        Estado Audio: <span id="waveStatus" class="text-rose-400">Muted</span>
+                    </div>
+                </div>
+
+                <!-- Graphic Canvas View -->
+                <div class="relative flex-1 w-full h-full rounded-lg overflow-hidden border border-slate-800/80 bg-slate-950/70">
+                    <canvas id="canvasVisualizer" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+
+            <!-- Bottom Right: Real-Time Dynamic Graph (Chart.js) -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex-1 flex flex-col min-h-[300px]">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-line text-cyan-400"></i>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Respuesta Distancia vs Frecuencia (Hz) / Ritmo</h3>
+                    </div>
+                    <button id="btnClearChart" class="text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[11px] transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i>Limpiar Traza
+                    </button>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="relative flex-1 w-full h-full min-h-[200px]">
+                    <canvas id="chartCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Interactive & Web Audio Script -->
+    <script>
+        // Simulation State
+        const state = {
+            distance: 20.0,      // cm (1 to 100)
+            baseFreq: 440,       // Hz
+            masterVolume: 0.7,   // 0.0 to 1.0
+            soundMode: 'beeps',  // 'beeps' or 'continuous'
+            audioEnabled: false,
+            isSweeping: false,
+            sweepDirection: 1,
+            calculatedFreq: 440,
+            beepRateMs: 500,     // Interval between beeps in ms
+            history: []
+        };
+
+        // Web Audio API Context & Nodes
+        let audioCtx = null;
+        let masterGainNode = null;
+        let oscillatorNode = null;
+        let isBeepingNow = false;
+        let lastBeepTime = 0;
+
+        // DOM Elements
+        const inputDistance = document.getElementById('inputDistance');
+        const sliderDistLabel = document.getElementById('sliderDistLabel');
+        const valDistanceDisplay = document.getElementById('valDistanceDisplay');
+        const valFrequencyDisplay = document.getElementById('valFrequencyDisplay');
+        const distanceBar = document.getElementById('distanceBar');
+        const freqBar = document.getElementById('freqBar');
+        const inputBaseFreq = document.getElementById('inputBaseFreq');
+        const lblBaseFreq = document.getElementById('lblBaseFreq');
+        const inputVolume = document.getElementById('inputVolume');
+        const lblVolume = document.getElementById('lblVolume');
+        const btnAudioToggle = document.getElementById('btnAudioToggle');
+        const audioIcon = document.getElementById('audioIcon');
+        const audioText = document.getElementById('audioText');
+        const soundStatusBadge = document.getElementById('soundStatusBadge');
+        const soundDesc = document.getElementById('soundDesc');
+        const statusLed = document.getElementById('statusLed');
+        const waveStatus = document.getElementById('waveStatus');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+        const btnReset = document.getElementById('btnReset');
+        const btnClearChart = document.getElementById('btnClearChart');
+        const canvasVisualizer = document.getElementById('canvasVisualizer');
+        const ctxVis = canvasVisualizer.getContext('2d');
+
+        // Web Audio API Synthesizer Setup
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass();
+
+                masterGainNode = audioCtx.createGain();
+                masterGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                masterGainNode.connect(audioCtx.destination);
+            }
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleAudio() {
+            if (!audioCtx) {
+                initAudioContext();
+            }
+
+            state.audioEnabled = !state.audioEnabled;
+
+            if (state.audioEnabled) {
+                btnAudioToggle.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+                btnAudioToggle.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                audioIcon.className = 'fa-solid fa-volume-high';
+                audioText.textContent = 'Sonido Activo';
+                soundStatusBadge.textContent = 'Audio Emitiendo';
+                soundStatusBadge.className = 'text-[11px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono';
+                waveStatus.textContent = 'Emisión Activa';
+                waveStatus.className = 'text-emerald-400';
+                statusLed.className = 'flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping';
+
+                if (state.soundMode === 'continuous') {
+                    startContinuousTone();
+                }
+            } else {
+                btnAudioToggle.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                btnAudioToggle.classList.add('bg-rose-600', 'hover:bg-rose-500');
+                audioIcon.className = 'fa-solid fa-volume-xmark';
+                audioText.textContent = 'Activar Sonido';
+                soundStatusBadge.textContent = 'Audio Silenciado';
+                soundStatusBadge.className = 'text-[11px] px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800 font-mono';
+                waveStatus.textContent = 'Muted';
+                waveStatus.className = 'text-rose-400';
+                statusLed.className = 'flex h-2.5 w-2.5 rounded-full bg-slate-600';
+
+                stopContinuousTone();
+            }
+        }
+
+        // Emit individual beep pulse for proximity warning
+        function playSingleBeep(freq, durationMs) {
+            if (!state.audioEnabled || !audioCtx) return;
+
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                const vol = state.masterVolume * 0.5;
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                // Envelope decay
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (durationMs / 1000));
+
+                osc.connect(gain);
+                gain.connect(masterGainNode);
+
+                masterGainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + (durationMs / 1000));
+                
+                // Trigger visual pulse
+                visualPulseRadius = 10;
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
+        }
+
+        function startContinuousTone() {
+            if (!audioCtx || oscillatorNode) return;
+            try {
+                oscillatorNode = audioCtx.createOscillator();
+                oscillatorNode.type = 'triangle';
+                oscillatorNode.frequency.setValueAtTime(state.calculatedFreq, audioCtx.currentTime);
+                
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(state.masterVolume * 0.3, audioCtx.currentTime);
+
+                oscillatorNode.connect(gain);
+                gain.connect(masterGainNode);
+
+                masterGainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+                oscillatorNode.start();
+            } catch (e) {
+                console.error("Tone error:", e);
+            }
+        }
+
+        function stopContinuousTone() {
+            if (oscillatorNode) {
+                try {
+                    oscillatorNode.stop();
+                    oscillatorNode.disconnect();
+                } catch(e) {}
+                oscillatorNode = null;
+            }
+        }
+
+        function updateAudioSynthesizer() {
+            if (!state.audioEnabled || !audioCtx) return;
+
+            // Compute audio parameters from distance (Inverse non-linear relation)
+            // Near = Higher pitch + Faster Beeps
+            const distFactor = Math.max(0.01, state.distance / 100);
+            
+            // Frequency range: BaseFreq to BaseFreq * 2.5
+            state.calculatedFreq = state.baseFreq + ((1 - distFactor) * 850);
+            
+            // Beep Interval (ms): Very fast at 5cm (50ms) to slow at 100cm (900ms)
+            state.beepRateMs = Math.max(40, Math.pow(state.distance, 1.3) * 8 + 30);
+
+            if (state.soundMode === 'continuous') {
+                if (!oscillatorNode) startContinuousTone();
+                if (oscillatorNode) {
+                    oscillatorNode.frequency.setTargetAtTime(state.calculatedFreq, audioCtx.currentTime, 0.03);
+                }
+            } else {
+                // Beep Mode logic
+                stopContinuousTone();
+                const now = performance.now();
+
+                // Below 5 cm: Continuous danger alarm tone
+                if (state.distance <= 5) {
+                    if (now - lastBeepTime > 60) {
+                        playSingleBeep(state.calculatedFreq + 200, 80);
+                        lastBeepTime = now;
+                    }
+                } else if (now - lastBeepTime >= state.beepRateMs) {
+                    const beepDuration = Math.min(100, state.beepRateMs * 0.4);
+                    playSingleBeep(state.calculatedFreq, beepDuration);
+                    lastBeepTime = now;
+                }
+            }
+        }
+
+        // Initialize Dynamic Chart (Chart.js)
+        let proximityChart;
+        function initChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 250);
+            gradient.addColorStop(0, 'rgba(6, 182, 212, 0.4)');
+            gradient.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+
+            proximityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Curva Teórica de Frecuencia',
+                            data: [],
+                            borderColor: '#475569',
+                            borderWidth: 2,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Frecuencia Sonora Emitida (Hz)',
+                            data: [],
+                            borderColor: '#06b6d4',
+                            borderWidth: 3,
+                            backgroundColor: gradient,
+                            fill: true,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#ffffff',
+                            pointRadius: 4,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Punto Actual',
+                            data: [],
+                            borderColor: '#10b981',
+                            backgroundColor: '#10b981',
+                            pointRadius: 7,
+                            showLine: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Distancia de Proximidad (cm)',
+                                color: '#94a3b8',
+                                font: { family: 'Plus Jakarta Sans', size: 12, weight: '600' }
+                            },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#64748b', font: { family: 'JetBrains Mono' } },
+                            min: 0,
+                            max: 100
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Frecuencia Tono (Hz)',
+                                color: '#94a3b8',
+                                font: { family: 'Plus Jakarta Sans', size: 12, weight: '600' }
+                            },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#64748b', font: { family: 'JetBrains Mono' } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#cbd5e1',
+                                font: { family: 'Plus Jakarta Sans', size: 11 },
+                                boxWidth: 12
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleColor: '#38bdf8',
+                            bodyColor: '#f1f5f9',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: (ctx) => `Dist: ${ctx.parsed.x.toFixed(1)} cm | Freq: ${Math.round(ctx.parsed.y)} Hz`
+                            }
+                        }
+                    }
+                }
+            });
+
+            recalculateTheoreticalCurve();
+        }
+
+        function recalculateTheoreticalCurve() {
+            const points = [];
+            for (let d = 1; d <= 100; d += 2) {
+                const distFactor = d / 100;
+                const f = state.baseFreq + ((1 - distFactor) * 850);
+                points.push({ x: d, y: f });
+            }
+            proximityChart.data.datasets[0].data = points;
+            proximityChart.update('none');
+        }
+
+        // Render 2D Simulation Canvas
+        let visualPulseRadius = 0;
+        let wavePhase = 0;
+
+        function renderVisualizer() {
+            const rect = canvasVisualizer.getBoundingClientRect();
+            if (canvasVisualizer.width !== rect.width || canvasVisualizer.height !== rect.height) {
+                canvasVisualizer.width = rect.width;
+                canvasVisualizer.height = rect.height;
+            }
+
+            const width = canvasVisualizer.width;
+            const height = canvasVisualizer.height;
+            const cy = height / 2;
+
+            ctxVis.clearRect(0, 0, width, height);
+
+            // Sensor position fixed on left
+            const sensorX = 65;
+            const maxTrackWidth = width - 150; 
+            const targetX = sensorX + (state.distance / 100) * maxTrackWidth + 30;
+
+            // 1. Draw Distance Scale / Track
+            ctxVis.strokeStyle = 'rgba(71, 85, 105, 0.4)';
+            ctxVis.lineWidth = 2;
+            ctxVis.beginPath();
+            ctxVis.moveTo(sensorX + 25, cy + 45);
+            ctxVis.lineTo(width - 30, cy + 45);
+            ctxVis.stroke();
+
+            ctxVis.fillStyle = '#64748b';
+            ctxVis.font = '10px JetBrains Mono';
+            for (let cm = 0; cm <= 100; cm += 25) {
+                const tx = sensorX + 25 + (cm / 100) * maxTrackWidth;
+                ctxVis.beginPath();
+                ctxVis.moveTo(tx, cy + 42);
+                ctxVis.lineTo(tx, cy + 48);
+                ctxVis.stroke();
+                ctxVis.fillText(`${cm}cm`, tx - 12, cy + 62);
+            }
+
+            // 2. Ultrasonic Sensor (Emitter)
+            ctxVis.save();
+            ctxVis.shadowColor = 'rgba(6, 182, 212, 0.3)';
+            ctxVis.shadowBlur = 12;
+
+            // Sensor Box
+            ctxVis.fillStyle = '#1e293b';
+            ctxVis.strokeStyle = '#38bdf8';
+            ctxVis.lineWidth = 1.5;
+            ctxVis.beginPath();
+            ctxVis.roundRect(sensorX - 45, cy - 30, 65, 60, 6);
+            ctxVis.fill();
+            ctxVis.stroke();
+
+            // Dual Transducers (Speaker/Mic style)
+            ctxVis.fillStyle = '#0284c7';
+            ctxVis.beginPath();
+            ctxVis.arc(sensorX + 10, cy - 12, 10, 0, Math.PI * 2);
+            ctxVis.arc(sensorX + 10, cy + 12, 10, 0, Math.PI * 2);
+            ctxVis.fill();
+            ctxVis.restore();
+
+            // 3. Acoustic Sound Wave Animation
+            wavePhase += (state.calculatedFreq / 300) + 0.05;
+            const distPx = targetX - (sensorX + 20);
+            
+            ctxVis.save();
+            const colorHue = Math.max(0, 160 - (100 - state.distance) * 1.4); // Turns red as it gets closer
+            ctxVis.strokeStyle = `hsl(${colorHue}, 90%, 55%)`;
+            ctxVis.lineWidth = state.distance < 10 ? 3 : 2;
+
+            const numArcs = Math.min(10, Math.floor(distPx / 18));
+            for (let i = 1; i <= numArcs; i++) {
+                const waveR = ((wavePhase * 12 + i * 22) % distPx);
+                const alpha = 1 - (waveR / distPx);
+                
+                ctxVis.strokeStyle = `hsla(${colorHue}, 90%, 55%, ${Math.max(0, alpha)})`;
+                ctxVis.beginPath();
+                ctxVis.arc(sensorX + 20, cy, Math.max(1, waveR), -Math.PI / 3.5, Math.PI / 3.5);
+                ctxVis.stroke();
+            }
+
+            // Beep Flash Visual Effect
+            if (visualPulseRadius > 0) {
+                ctxVis.strokeStyle = `rgba(239, 68, 68, ${visualPulseRadius / 30})`;
+                ctxVis.lineWidth = 4;
+                ctxVis.beginPath();
+                ctxVis.arc(sensorX + 20, cy, visualPulseRadius * 2, 0, Math.PI * 2);
+                ctxVis.stroke();
+                visualPulseRadius += 2;
+                if (visualPulseRadius > 25) visualPulseRadius = 0;
+            }
+            ctxVis.restore();
+
+            // 4. Target Approaching Obstacle
+            ctxVis.save();
+            const isCritical = state.distance <= 10;
+            ctxVis.shadowColor = isCritical ? 'rgba(239, 68, 68, 0.6)' : 'rgba(16, 185, 129, 0.4)';
+            ctxVis.shadowBlur = isCritical ? 20 : 12;
+
+            ctxVis.fillStyle = isCritical ? '#7f1d1d' : '#1e293b';
+            ctxVis.strokeStyle = isCritical ? '#ef4444' : '#10b981';
+            ctxVis.lineWidth = 2;
+            
+            ctxVis.beginPath();
+            ctxVis.roundRect(targetX, cy - 40, 24, 80, 5);
+            ctxVis.fill();
+            ctxVis.stroke();
+
+            // Target Front Plate Glow
+            ctxVis.fillStyle = isCritical ? '#ef4444' : '#10b981';
+            ctxVis.fillRect(targetX - 2, cy - 35, 4, 70);
+
+            ctxVis.restore();
+
+            // 5. Dimension Line & Arrow
+            ctxVis.strokeStyle = '#f59e0b';
+            ctxVis.lineWidth = 1.5;
+            ctxVis.setLineDash([4, 4]);
+            ctxVis.beginPath();
+            ctxVis.moveTo(sensorX + 20, cy - 48);
+            ctxVis.lineTo(targetX, cy - 48);
+            ctxVis.stroke();
+            ctxVis.setLineDash([]);
+
+            // Label above arrow
+            ctxVis.fillStyle = '#fbbf24';
+            ctxVis.font = 'bold 11px JetBrains Mono';
+            ctxVis.textAlign = 'center';
+            ctxVis.fillText(`${state.distance.toFixed(1)} cm`, (sensorX + 20 + targetX) / 2, cy - 55);
+        }
+
+        // Simulation Update Loop
+        function updateSimulation() {
+            // Auto Sweep Automation
+            if (state.isSweeping) {
+                state.distance += state.sweepDirection * 0.35;
+                if (state.distance >= 95) {
+                    state.distance = 95;
+                    state.sweepDirection = -1;
+                } else if (state.distance <= 2) {
+                    state.distance = 2;
+                    state.sweepDirection = 1;
+                }
+                inputDistance.value = state.distance;
+            } else {
+                state.distance = parseFloat(inputDistance.value);
+            }
+
+            // Update Audio Engine
+            updateAudioSynthesizer();
+
+            // Update Telemetry Display UI
+            sliderDistLabel.textContent = `${state.distance.toFixed(1)} cm`;
+            valDistanceDisplay.textContent = state.distance.toFixed(1);
+            valFrequencyDisplay.textContent = Math.round(state.calculatedFreq);
+
+            distanceBar.style.width = `${Math.min(100, state.distance)}%`;
+            freqBar.style.width = `${Math.min(100, ((state.calculatedFreq - 200) / 1200) * 100)}%`;
+
+            // Update Chart Current Point
+            const currentPoint = { x: state.distance, y: state.calculatedFreq };
+            state.history.push(currentPoint);
+            if (state.history.length > 35) state.history.shift();
+
+            proximityChart.data.datasets[1].data = [...state.history].sort((a,b) => a.x - b.x);
+            proximityChart.data.datasets[2].data = [currentPoint];
+            proximityChart.update('none');
+
+            // Render Canvas
+            renderVisualizer();
+
+            requestAnimationFrame(updateSimulation);
+        }
+
+        // Set Sound Alert Mode (Beeps vs Continuous)
+        function setSoundMode(mode) {
+            state.soundMode = mode;
+            document.querySelectorAll('.sound-mode-btn').forEach(btn => {
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('bg-cyan-950', 'border-cyan-500', 'text-cyan-300');
+                    btn.classList.remove('bg-slate-800/80', 'border-slate-700', 'text-slate-400');
+                } else {
+                    btn.classList.remove('bg-cyan-950', 'border-cyan-500', 'text-cyan-300');
+                    btn.classList.add('bg-slate-800/80', 'border-slate-700', 'text-slate-400');
+                }
+            });
+
+            if (mode === 'beeps') {
+                soundDesc.innerHTML = 'En modo <b>Beeps</b>, el intervalo entre sonidos disminuye a medida que el objeto se aproxima. Por debajo de 5 cm se convierte en tono continuo constante de advertencia.';
+                stopContinuousTone();
+            } else {
+                soundDesc.innerHTML = 'En modo <b>Tono Continuo (VCO)</b>, la frecuencia del oscilador sube de tono fluidamente en Hz a medida que se reduce la distancia.';
+                if (state.audioEnabled) startContinuousTone();
+            }
+        }
+
+        // Setup Event Listeners
+        function initEvents() {
+            btnAudioToggle.addEventListener('click', toggleAudio);
+
+            inputDistance.addEventListener('input', () => {
+                if (state.isSweeping) toggleSweep();
+            });
+
+            inputBaseFreq.addEventListener('input', (e) => {
+                state.baseFreq = parseFloat(e.target.value);
+                lblBaseFreq.textContent = `${state.baseFreq} Hz`;
+                recalculateTheoreticalCurve();
+            });
+
+            inputVolume.addEventListener('input', (e) => {
+                state.masterVolume = parseFloat(e.target.value) / 100;
+                lblVolume.textContent = `${e.target.value} %`;
+            });
+
+            document.querySelectorAll('.sound-mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => setSoundMode(btn.dataset.mode));
+            });
+
+            btnPlayPause.addEventListener('click', toggleSweep);
+
+            btnReset.addEventListener('click', () => {
+                if (state.isSweeping) toggleSweep();
+                state.distance = 20;
+                state.baseFreq = 440;
+                state.masterVolume = 0.7;
+                inputDistance.value = 20;
+                inputBaseFreq.value = 440;
+                inputVolume.value = 70;
+                lblBaseFreq.textContent = '440 Hz';
+                lblVolume.textContent = '70 %';
+                state.history = [];
+                setSoundMode('beeps');
+            });
+
+            btnClearChart.addEventListener('click', () => {
+                state.history = [];
+            });
+        }
+
+        function toggleSweep() {
+            state.isSweeping = !state.isSweeping;
+            if (state.isSweeping) {
+                btnPlayPause.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                btnPlayPause.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                playIcon.className = 'fa-solid fa-pause';
+                playText.textContent = 'Pausar Auto';
+            } else {
+                btnPlayPause.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btnPlayPause.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                playIcon.className = 'fa-solid fa-play';
+                playText.textContent = 'Acercamiento Auto';
+            }
+        }
+
+        // Initialize application
+        window.onload = function() {
+            initChart();
+            initEvents();
+            requestAnimationFrame(updateSimulation);
+        };
+    </script>
+</body>
+</html>
